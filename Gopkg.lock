@@ -18,6 +18,14 @@
   version = "v1.2.0"
 
 [[projects]]
+  digest = "1:e1cd343b3883ced86b6873fe4d2f76799259fba3d1656df6ac0a7fa92644c049"
+  name = "github.com/toqueteos/webbrowser"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "3232c91b8ede8ca86e8962981d881af78875542f"
+  version = "v1.1.0"
+
+[[projects]]
   branch = "master"
   digest = "1:d6b719875cf8091fbab38527d81d34e71f4521b9ee9ccfbd4a32cff2ac5af96e"
   name = "golang.org/x/net"
@@ -65,6 +73,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/toqueteos/webbrowser",
     "golang.org/x/oauth2",
     "golang.org/x/oauth2/google",
   ]
