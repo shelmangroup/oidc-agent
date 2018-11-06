@@ -22,9 +22,15 @@ type tokens struct {
 	RefreshToken string     `json:"refresh_token"`
 	TokenExpiry  *time.Time `json:"token_expiry"`
 }
+type config struct {
+	ClientID     string   `json:"client_id"`
+	ClientSecret string   `json:"client_secret"`
+	Scopes       []string `json:"scopes"`
+}
 
 type oidcCredentials struct {
-	OIDCCreds *tokens `json:"oidcCreds,omitempty"`
+	OIDCCreds  *tokens `json:"oidcCreds,omitempty"`
+	OIDCConfig *config `json:"oidcConfig,omitempty"`
 }
 
 type OIDCAuth struct {
@@ -38,7 +44,7 @@ func (a *OIDCAuth) TokenSource(ctx context.Context) oauth2.TokenSource {
 
 type OIDCCredStore interface {
 	GetOIDCAuth() (*OIDCAuth, error)
-	SetOIDCAuth(tok *oauth2.Token) error
+	SetOIDCAuth(clientID, clientSecret string, scopes []string, tok *oauth2.Token) error
 	DeleteOIDCAuth() error
 }
 
@@ -73,9 +79,9 @@ func (s *credStore) GetOIDCAuth() (*OIDCAuth, error) {
 
 	return &OIDCAuth{
 		conf: &oauth2.Config{
-			ClientID:     "",         //config.OIDCCredHelperClientID,
-			ClientSecret: "",         //config.OIDCCredHelperClientNotSoSecret,
-			Scopes:       []string{}, //config.OIDCScopes,
+			ClientID:     creds.OIDCConfig.ClientID,
+			ClientSecret: creds.OIDCConfig.ClientSecret,
+			Scopes:       creds.OIDCConfig.Scopes,
 			Endpoint:     google.Endpoint,
 			RedirectURL:  "oob",
 		},
@@ -88,7 +94,7 @@ func (s *credStore) GetOIDCAuth() (*OIDCAuth, error) {
 }
 
 // SetOIDCAuth sets the stored OIDC credentials.
-func (s *credStore) SetOIDCAuth(tok *oauth2.Token) error {
+func (s *credStore) SetOIDCAuth(clientID, clientSecret string, scopes []string, tok *oauth2.Token) error {
 	creds, err := s.loadOIDCCredentials()
 	if err != nil {
 		// It's OK if we couldn't read any credentials,
@@ -100,6 +106,12 @@ func (s *credStore) SetOIDCAuth(tok *oauth2.Token) error {
 		AccessToken:  tok.AccessToken,
 		RefreshToken: tok.RefreshToken,
 		TokenExpiry:  &tok.Expiry,
+	}
+
+	creds.OIDCConfig = &config{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		Scopes:       scopes,
 	}
 
 	return s.setOIDCCredentials(creds)
