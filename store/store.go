@@ -15,8 +15,7 @@ import (
 )
 
 const (
-	credentialStoreEnvVar   = "OIDC_CREDENTIAL_STORE"
-	credentialStoreFilename = "oidc_credentials.json"
+	credentialStoreEnvVar = "OIDC_CREDENTIAL_STORE"
 )
 
 type tokens struct {
@@ -45,9 +44,9 @@ func (a *OIDCAuth) TokenSource(ctx context.Context) oauth2.TokenSource {
 }
 
 type OIDCCredStore interface {
-	GetOIDCAuth() (*OIDCAuth, error)
-	SetOIDCAuth(clientID, clientSecret string, tok *oauth2.Token) error
-	DeleteOIDCAuth() error
+	GetOIDCAuth(name string) (*OIDCAuth, error)
+	SetOIDCAuth(name, clientID, clientSecret string, tok *oauth2.Token) error
+	DeleteOIDCAuth(name string) error
 }
 
 type credStore struct {
@@ -61,8 +60,8 @@ func NewOIDCCredStore() (OIDCCredStore, error) {
 	}, err
 }
 
-func (s *credStore) GetOIDCAuth() (*OIDCAuth, error) {
-	creds, err := s.loadOIDCCredentials()
+func (s *credStore) GetOIDCAuth(name string) (*OIDCAuth, error) {
+	creds, err := s.loadOIDCCredentials(name)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// No file, no credentials.
@@ -97,8 +96,8 @@ func (s *credStore) GetOIDCAuth() (*OIDCAuth, error) {
 }
 
 // SetOIDCAuth sets the stored OIDC credentials.
-func (s *credStore) SetOIDCAuth(clientID, clientSecret string, tok *oauth2.Token) error {
-	creds, err := s.loadOIDCCredentials()
+func (s *credStore) SetOIDCAuth(name, clientID, clientSecret string, tok *oauth2.Token) error {
+	creds, err := s.loadOIDCCredentials(name)
 	if err != nil {
 		// It's OK if we couldn't read any credentials,
 		// making a new file.
@@ -117,12 +116,12 @@ func (s *credStore) SetOIDCAuth(clientID, clientSecret string, tok *oauth2.Token
 		Scopes:       []string{"https://www.googleapis.com/auth/cloud-platform"},
 	}
 
-	return s.setOIDCCredentials(creds)
+	return s.setOIDCCredentials(name, creds)
 }
 
 // DeleteOIDCAuth deletes the stored OIDC credentials.
-func (s *credStore) DeleteOIDCAuth() error {
-	creds, err := s.loadOIDCCredentials()
+func (s *credStore) DeleteOIDCAuth(name string) error {
+	creds, err := s.loadOIDCCredentials(name)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// No file, no credentials.
@@ -134,7 +133,7 @@ func (s *credStore) DeleteOIDCAuth() error {
 	// Optimization: only perform a 'set' if necessary
 	if creds.OIDCCreds != nil {
 		creds.OIDCCreds = nil
-		return s.setOIDCCredentials(creds)
+		return s.setOIDCCredentials(name, creds)
 	}
 	return nil
 }
@@ -148,24 +147,25 @@ func oidcCredentialPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(configPath, credentialStoreFilename), nil
+	return configPath, nil
 }
 
-func (s *credStore) createCredentialFile() (*os.File, error) {
+func (s *credStore) createCredentialFile(name string) (*os.File, error) {
 	// create the config dir, if it doesnt exist
 	if err := os.MkdirAll(filepath.Dir(s.credentialPath), 0700); err != nil {
 		return nil, err
 	}
 	// create the credential file, or truncate (clear) it if it exists
-	f, err := os.Create(s.credentialPath)
+	path := filepath.Join(s.credentialPath, name)
+	f, err := os.Create(path)
 	if err != nil {
 		return nil, err
 	}
 	return f, nil
 }
 
-func (s *credStore) loadOIDCCredentials() (*oidcCredentials, error) {
-	path := s.credentialPath
+func (s *credStore) loadOIDCCredentials(name string) (*oidcCredentials, error) {
+	path := filepath.Join(s.credentialPath, name)
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -180,8 +180,8 @@ func (s *credStore) loadOIDCCredentials() (*oidcCredentials, error) {
 	return &creds, nil
 }
 
-func (s *credStore) setOIDCCredentials(creds *oidcCredentials) error {
-	f, err := s.createCredentialFile()
+func (s *credStore) setOIDCCredentials(name string, creds *oidcCredentials) error {
+	f, err := s.createCredentialFile(name)
 	if err != nil {
 		return err
 	}

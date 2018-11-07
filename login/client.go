@@ -10,6 +10,7 @@ var (
 	skipBrowser  = command.Flag("skip-browser", "Try not to open up the browser").Bool()
 	clientID     = command.Flag("client-id", "OIDC Client ID").Required().String()
 	clientSecret = command.Flag("client-secret", "OIDC Client Secret").Required().String()
+	name         = command.Flag("name", "Name the secret").Short('n').Required().String()
 )
 
 func FullCommand() string {
@@ -37,6 +38,6 @@ func RunLogin() error {
 		return err
 	}
 
-	s.SetOIDCAuth(*clientID, *clientSecret, token)
+	s.SetOIDCAuth(*name, *clientID, *clientSecret, token)
 	return nil
 }
