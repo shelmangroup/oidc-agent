@@ -6,8 +6,10 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/shelmangroup/oidc-agent/util"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
@@ -44,7 +46,7 @@ func (a *OIDCAuth) TokenSource(ctx context.Context) oauth2.TokenSource {
 
 type OIDCCredStore interface {
 	GetOIDCAuth() (*OIDCAuth, error)
-	SetOIDCAuth(clientID, clientSecret string, scopes []string, tok *oauth2.Token) error
+	SetOIDCAuth(clientID, clientSecret string, tok *oauth2.Token) error
 	DeleteOIDCAuth() error
 }
 
@@ -52,10 +54,11 @@ type credStore struct {
 	credentialPath string
 }
 
-func NewOIDCCredStore(path string) OIDCCredStore {
+func NewOIDCCredStore() (OIDCCredStore, error) {
+	path, err := oidcCredentialPath()
 	return &credStore{
 		credentialPath: path,
-	}
+	}, err
 }
 
 func (s *credStore) GetOIDCAuth() (*OIDCAuth, error) {
@@ -94,7 +97,7 @@ func (s *credStore) GetOIDCAuth() (*OIDCAuth, error) {
 }
 
 // SetOIDCAuth sets the stored OIDC credentials.
-func (s *credStore) SetOIDCAuth(clientID, clientSecret string, scopes []string, tok *oauth2.Token) error {
+func (s *credStore) SetOIDCAuth(clientID, clientSecret string, tok *oauth2.Token) error {
 	creds, err := s.loadOIDCCredentials()
 	if err != nil {
 		// It's OK if we couldn't read any credentials,
@@ -111,7 +114,7 @@ func (s *credStore) SetOIDCAuth(clientID, clientSecret string, scopes []string, 
 	creds.OIDCConfig = &config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
-		Scopes:       scopes,
+		Scopes:       []string{"https://www.googleapis.com/auth/cloud-platform"},
 	}
 
 	return s.setOIDCCredentials(creds)
@@ -136,9 +139,21 @@ func (s *credStore) DeleteOIDCAuth() error {
 	return nil
 }
 
+func oidcCredentialPath() (string, error) {
+	if path := os.Getenv(credentialStoreEnvVar); strings.TrimSpace(path) != "" {
+		return path, nil
+	}
+
+	configPath, err := util.SdkConfigPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(configPath, credentialStoreFilename), nil
+}
+
 func (s *credStore) createCredentialFile() (*os.File, error) {
 	// create the config dir, if it doesnt exist
-	if err := os.MkdirAll(filepath.Dir(s.credentialPath), 0777); err != nil {
+	if err := os.MkdirAll(filepath.Dir(s.credentialPath), 0700); err != nil {
 		return nil, err
 	}
 	// create the credential file, or truncate (clear) it if it exists

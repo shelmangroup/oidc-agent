@@ -20,8 +20,11 @@ func NewLoginClient(clientId, clientSecret string) error {
 		return err
 	}
 
-	s := store.NewOIDCCredStore("/tmp")
-	// pass clientID, clientSecret, scopes and token
-	s.SetOIDCAuth("", "", []string{}, token)
+	s, err := store.NewOIDCCredStore()
+	if err != nil {
+		return err
+	}
+	// pass clientID, clientSecret and token
+	s.SetOIDCAuth("", "", token)
 	return nil
 }
