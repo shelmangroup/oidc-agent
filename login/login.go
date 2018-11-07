@@ -26,7 +26,7 @@ var promptConsent oauth2.AuthCodeOption = oauth2.SetAuthURLParam("prompt", "cons
 // the authorization_code in response.
 type LoginAgent struct {
 	// Whether to execute OpenBrowser when authenticating the user.
-	AllowBrowser bool
+	SkipBrowser bool
 
 	// Read input from here; if nil, uses os.Stdin.
 	In io.Reader
@@ -69,7 +69,7 @@ func (a *LoginAgent) PerformLogin() (oauth2.TokenSource, error) {
 		},
 	}
 
-	if a.AllowBrowser {
+	if !a.SkipBrowser {
 		// Attempt to receive the authorization code via redirect URL
 		if ln, port, err := getListener(); err == nil {
 			defer ln.Close()

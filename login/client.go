@@ -2,13 +2,25 @@ package login
 
 import (
 	"github.com/shelmangroup/oidc-agent/store"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-func NewLoginClient(clientId, clientSecret string) error {
+var (
+	command      = kingpin.Command("login", "Login")
+	skipBrowser  = command.Flag("skip-browser", "Try not to open up the browser").Bool()
+	clientID     = command.Flag("client-id", "OIDC Client ID").Required().String()
+	clientSecret = command.Flag("client-secret", "OIDC Client Secret").Required().String()
+)
+
+func FullCommand() string {
+	return command.FullCommand()
+}
+
+func RunLogin() error {
 	login := &LoginAgent{
-		AllowBrowser: true,
-		ClientID:     "", //config.ClientID
-		ClientSecret: "", //config.ClientSecret
+		SkipBrowser:  *skipBrowser,
+		ClientID:     *clientID,
+		ClientSecret: *clientSecret,
 	}
 
 	ts, err := login.PerformLogin()
@@ -24,7 +36,7 @@ func NewLoginClient(clientId, clientSecret string) error {
 	if err != nil {
 		return err
 	}
-	// pass clientID, clientSecret and token
-	s.SetOIDCAuth("", "", token)
+
+	s.SetOIDCAuth(*clientID, *clientSecret, token)
 	return nil
 }

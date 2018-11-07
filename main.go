@@ -1,7 +1,17 @@
 package main
 
-import "fmt"
+import (
+	"github.com/shelmangroup/oidc-agent/login"
+	"gopkg.in/alecthomas/kingpin.v2"
+)
 
 func main() {
-	fmt.Println("vim-go")
+	kingpin.HelpFlag.Short('h')
+	kingpin.CommandLine.DefaultEnvars()
+	kingpin.Parse()
+
+	switch kingpin.Parse() {
+	case login.FullCommand():
+		login.RunLogin()
+	}
 }
