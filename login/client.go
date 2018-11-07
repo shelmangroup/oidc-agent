@@ -1,4 +1,4 @@
-package client
+package login
 
 import (
 	"github.com/shelmangroup/oidc-agent/store"
