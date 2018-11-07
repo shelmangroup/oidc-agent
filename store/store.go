@@ -144,7 +144,7 @@ func oidcCredentialPath() (string, error) {
 		return path, nil
 	}
 
-	configPath, err := util.SdkConfigPath()
+	configPath, err := util.CredentialsConfigPath()
 	if err != nil {
 		return "", err
 	}

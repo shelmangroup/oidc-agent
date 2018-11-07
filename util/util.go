@@ -8,7 +8,7 @@ import (
 	"runtime"
 )
 
-func SdkConfigPath() (string, error) {
+func CredentialsConfigPath() (string, error) {
 	if runtime.GOOS == "windows" {
 		return filepath.Join(os.Getenv("APPDATA"), "oidc-agent"), nil
 	}
