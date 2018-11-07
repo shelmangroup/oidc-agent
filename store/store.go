@@ -21,6 +21,7 @@ const (
 type tokens struct {
 	AccessToken  string     `json:"access_token"`
 	RefreshToken string     `json:"refresh_token"`
+	IdToken      string     `json:"id_token"`
 	TokenExpiry  *time.Time `json:"token_expiry"`
 }
 type config struct {
@@ -35,8 +36,9 @@ type oidcCredentials struct {
 }
 
 type OIDCAuth struct {
-	conf         *oauth2.Config
-	initialToken *oauth2.Token
+	conf           *oauth2.Config
+	initialToken   *oauth2.Token
+	InitialIdToken string
 }
 
 func (a *OIDCAuth) TokenSource(ctx context.Context) oauth2.TokenSource {
@@ -92,6 +94,7 @@ func (s *credStore) GetOIDCAuth(name string) (*OIDCAuth, error) {
 			RefreshToken: creds.OIDCCreds.RefreshToken,
 			Expiry:       expiry,
 		},
+		InitialIdToken: creds.OIDCCreds.IdToken,
 	}, nil
 }
 
@@ -107,6 +110,7 @@ func (s *credStore) SetOIDCAuth(name, clientID, clientSecret string, tok *oauth2
 	creds.OIDCCreds = &tokens{
 		AccessToken:  tok.AccessToken,
 		RefreshToken: tok.RefreshToken,
+		IdToken:      tok.Extra("id_token").(string),
 		TokenExpiry:  &tok.Expiry,
 	}
 

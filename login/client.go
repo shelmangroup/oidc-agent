@@ -18,22 +18,21 @@ func FullCommand() string {
 }
 
 func RunLogin() error {
+	s, err := store.NewOIDCCredStore()
+	if err != nil {
+		return err
+	}
+
 	login := &LoginAgent{
 		SkipBrowser:  *skipBrowser,
 		ClientID:     *clientID,
 		ClientSecret: *clientSecret,
 	}
-
 	ts, err := login.PerformLogin()
 	if err != nil {
 		return err
 	}
 	token, err := ts.Token()
-	if err != nil {
-		return err
-	}
-
-	s, err := store.NewOIDCCredStore()
 	if err != nil {
 		return err
 	}
