@@ -58,7 +58,7 @@ func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, 
 		return res, nil
 	}
 
-	ts := creds.TokenSource(ctx)
+	ts := creds.TokenSource(context.Background())
 	tok, err := ts.Token()
 	if err != nil {
 		return nil, err
