@@ -3,14 +3,17 @@ package client
 import (
 	"context"
 	"fmt"
+	"time"
 
-	"github.com/shelmangroup/oidc-agent/store"
+	pb "github.com/shelmangroup/oidc-agent/proto"
+	"google.golang.org/grpc"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
 	command = kingpin.Command("get", "Get")
 	name    = command.Flag("name", "Name of secret").Short('n').Required().String()
+	address = command.Flag("server", "Server address.").Short('l').Default(":1337").String()
 )
 
 func FullCommand() string {
@@ -18,28 +21,17 @@ func FullCommand() string {
 }
 
 func RunGet() error {
-	s, err := store.NewOIDCCredStore()
+	// Set up a connection to the server.
+	conn, err := grpc.Dial(*address, grpc.WithInsecure())
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
+	c := pb.NewOIDCAgentClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	r, err := c.Get(ctx, &pb.GetRequest{Name: *name})
 
-	cred, err := s.GetOIDCAuth(*name)
-	if err != nil {
-		return err
-	}
-
-	ts := cred.TokenSource(context.Background())
-	tok, err := ts.Token()
-	if err != nil {
-		return err
-	}
-	if !tok.Valid() {
-		return err
-	}
-	idToken := tok.Extra("id_token")
-	if idToken == nil {
-		idToken = cred.InitialIdToken
-	}
-	fmt.Printf("TokenID: %s\n", idToken.(string))
+	fmt.Printf("TokenID: %s\n", r.IdToken)
 	return nil
 }

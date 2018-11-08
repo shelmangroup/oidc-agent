@@ -30,20 +30,6 @@ func FullCommand() string {
 }
 
 func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
-	if ts, ok := s.tokenCache[req.Name]; ok {
-		tok, err := ts.Token()
-		if err != nil {
-			return nil, err
-		}
-		if !tok.Valid() {
-			return nil, err
-		}
-		res := &pb.GetResponse{
-			IdToken: tok.Extra("id_token").(string),
-		}
-		return res, nil
-	}
-
 	c, err := store.NewOIDCCredStore()
 	if err != nil {
 		return nil, err
@@ -54,6 +40,24 @@ func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, 
 		return nil, err
 	}
 
+	if ts, ok := s.tokenCache[req.Name]; ok {
+		tok, err := ts.Token()
+		if err != nil {
+			return nil, err
+		}
+		if !tok.Valid() {
+			return nil, err
+		}
+		idToken := tok.Extra("id_token")
+		if idToken == nil {
+			idToken = creds.InitialIdToken
+		}
+		res := &pb.GetResponse{
+			IdToken: idToken.(string),
+		}
+		return res, nil
+	}
+
 	ts := creds.TokenSource(ctx)
 	tok, err := ts.Token()
 	if err != nil {
@@ -62,11 +66,15 @@ func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, 
 	if !tok.Valid() {
 		return nil, err
 	}
+	idToken := tok.Extra("id_token")
+	if idToken == nil {
+		idToken = creds.InitialIdToken
+	}
 	// cache token
 	s.tokenCache[req.Name] = ts
 
 	res := &pb.GetResponse{
-		IdToken: tok.Extra("id_token").(string),
+		IdToken: idToken.(string),
 	}
 	return res, nil
 }
@@ -80,7 +88,9 @@ func RunServer() {
 	}
 	go func() {
 		s := grpc.NewServer()
-		pb.RegisterOIDCAgentServer(s, &Server{})
+		pb.RegisterOIDCAgentServer(s, &Server{
+			tokenCache: make(map[string]oauth2.TokenSource),
+		})
 		reflection.Register(s)
 		log.WithField("address", *listenAddr).Info("Starting server")
 		if err := s.Serve(lis); err != nil {
