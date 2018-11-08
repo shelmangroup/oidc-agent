@@ -1,0 +1,14 @@
+syntax = "proto3";
+package api;
+
+service OIDCAgent {
+  rpc Get(GetRequest) returns (GetResponse) {}
+}
+
+message GetRequest {
+  string name = 1;
+}
+
+message GetResponse {
+  string id_token = 1;
+}

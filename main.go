@@ -5,6 +5,7 @@ import (
 
 	"github.com/shelmangroup/oidc-agent/client"
 	"github.com/shelmangroup/oidc-agent/login"
+	"github.com/shelmangroup/oidc-agent/server"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -16,6 +17,8 @@ func main() {
 	var err error
 
 	switch kingpin.Parse() {
+	case server.FullCommand():
+		server.RunServer()
 	case login.FullCommand():
 		err = login.RunLogin()
 	case client.FullCommand():
