@@ -31,7 +31,9 @@ func RunGet() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	r, err := c.Get(ctx, &pb.GetRequest{Name: *name})
-
+	if err != nil {
+		return err
+	}
 	fmt.Printf("TokenID: %s\n", r.IdToken)
 	return nil
 }
