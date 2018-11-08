@@ -156,7 +156,7 @@ func oidcCredentialPath() (string, error) {
 
 func (s *credStore) createCredentialFile(name string) (*os.File, error) {
 	// create the config dir, if it doesnt exist
-	if err := os.MkdirAll(filepath.Dir(s.credentialPath), 0700); err != nil {
+	if err := os.MkdirAll(s.credentialPath, 0700); err != nil {
 		return nil, err
 	}
 	// create the credential file, or truncate (clear) it if it exists
