@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/golang/protobuf/ptypes"
 	pb "github.com/shelmangroup/oidc-agent/proto"
 	"github.com/shelmangroup/oidc-agent/store"
 	log "github.com/sirupsen/logrus"
@@ -52,8 +53,14 @@ func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, 
 		if idToken == nil {
 			idToken = creds.InitialIdToken
 		}
+		expiry, err := ptypes.TimestampProto(tok.Expiry)
+		if err != nil {
+			return nil, err
+		}
 		res := &pb.GetResponse{
-			IdToken: idToken.(string),
+			IdToken:     idToken.(string),
+			AccessToken: tok.AccessToken,
+			TokenExpiry: expiry,
 		}
 		return res, nil
 	}
@@ -73,8 +80,14 @@ func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, 
 	// cache token
 	s.tokenCache[req.Name] = ts
 
+	expiry, err := ptypes.TimestampProto(tok.Expiry)
+	if err != nil {
+		return nil, err
+	}
 	res := &pb.GetResponse{
-		IdToken: idToken.(string),
+		IdToken:     idToken.(string),
+		AccessToken: tok.AccessToken,
+		TokenExpiry: expiry,
 	}
 	return res, nil
 }
