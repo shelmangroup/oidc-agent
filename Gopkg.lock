@@ -217,6 +217,8 @@
   analyzer-version = 1
   input-imports = [
     "github.com/golang/protobuf/proto",
+    "github.com/golang/protobuf/ptypes",
+    "github.com/golang/protobuf/ptypes/timestamp",
     "github.com/sirupsen/logrus",
     "github.com/toqueteos/webbrowser",
     "golang.org/x/net/context",
