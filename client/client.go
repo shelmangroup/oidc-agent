@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	pb "github.com/shelmangroup/oidc-agent/proto"
 	"google.golang.org/grpc"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -13,7 +14,7 @@ import (
 var (
 	command = kingpin.Command("get", "Get")
 	name    = command.Flag("name", "Name of secret").Short('n').Required().String()
-	address = command.Flag("server", "Server address.").Short('l').Default(":1337").String()
+	address = command.Flag("server", "Server address.").Short('l').Default("127.0.0.1:1337").String()
 )
 
 func FullCommand() string {
@@ -34,6 +35,8 @@ func RunGet() error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("TokenID: %s\n", r.IdToken)
+	expiry, err := ptypes.Timestamp(r.TokenExpiry)
+	fmt.Printf("IdToken: %s\n", r.IdToken)
+	fmt.Printf("Expire: %s\n", expiry)
 	return nil
 }

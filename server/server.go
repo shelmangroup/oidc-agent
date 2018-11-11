@@ -19,11 +19,12 @@ import (
 
 var (
 	command    = kingpin.Command("server", "Server")
-	listenAddr = command.Flag("listen", "Listen address.").Short('l').Default(":1337").String()
+	listenAddr = command.Flag("listen", "Listen address.").Short('l').Default("localhost:1337").String()
 )
 
 type Server struct {
 	tokenCache map[string]oauth2.TokenSource
+	store      store.OIDCCredStore
 }
 
 func FullCommand() string {
@@ -31,12 +32,9 @@ func FullCommand() string {
 }
 
 func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
-	c, err := store.NewOIDCCredStore()
-	if err != nil {
-		return nil, err
-	}
+	log.WithField("cred", req.Name).Info("Request")
 
-	creds, err := c.GetOIDCAuth(req.Name)
+	creds, err := s.store.GetOIDCAuth(req.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -99,14 +97,19 @@ func RunServer() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
+	s, err := store.NewOIDCCredStore()
+	if err != nil {
+		log.Fatalf("failed to open store: %v", err)
+	}
 	go func() {
-		s := grpc.NewServer()
-		pb.RegisterOIDCAgentServer(s, &Server{
+		svc := grpc.NewServer()
+		pb.RegisterOIDCAgentServer(svc, &Server{
 			tokenCache: make(map[string]oauth2.TokenSource),
+			store:      s,
 		})
-		reflection.Register(s)
+		reflection.Register(svc)
 		log.WithField("address", *listenAddr).Info("Starting server")
-		if err := s.Serve(lis); err != nil {
+		if err := svc.Serve(lis); err != nil {
 			errCh <- err
 		}
 	}()
