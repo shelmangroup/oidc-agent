@@ -12,9 +12,11 @@ import (
 )
 
 var (
-	command = kingpin.Command("get", "Get")
-	name    = command.Flag("name", "Name of secret").Short('n').Required().String()
-	address = command.Flag("server", "Server address.").Short('l').Default("127.0.0.1:1337").String()
+	command    = kingpin.Command("get", "Get")
+	name       = command.Flag("name", "Name of secret").Short('n').Required().String()
+	address    = command.Flag("server", "Server address.").Short('l').Default("127.0.0.1:1337").String()
+	output     = command.Flag("output", "What to output.").Short('o').Default("all").String()
+	authHeader = command.Flag("auth-header", "add HTTP Authorization header").Bool()
 )
 
 func FullCommand() string {
@@ -36,7 +38,29 @@ func RunGet() error {
 		return err
 	}
 	expiry, err := ptypes.Timestamp(r.TokenExpiry)
-	fmt.Printf("IdToken: %s\n", r.IdToken)
-	fmt.Printf("Expire: %s\n", expiry)
+	if err != nil {
+		return err
+	}
+
+	switch *output {
+	case "all":
+		{
+			fmt.Printf("IdToken: %s\n", r.IdToken)
+			fmt.Printf("AccessToken: %s\n", r.AccessToken)
+			fmt.Printf("Expire: %s\n", expiry)
+		}
+	case "id_token":
+		if *authHeader {
+			fmt.Printf("Authorization: Bearer ")
+		}
+		fmt.Printf("%s\n", r.IdToken)
+	case "access_token":
+		if *authHeader {
+			fmt.Printf("Authorization: Bearer ")
+		}
+		fmt.Printf("%s\n", r.AccessToken)
+	case "token_expire":
+		fmt.Printf("%s\n", expiry)
+	}
 	return nil
 }
