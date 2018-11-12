@@ -53,14 +53,14 @@ func RunGet() error {
 		if *authHeader {
 			fmt.Printf("Authorization: Bearer ")
 		}
-		fmt.Printf("%s\n", r.IdToken)
+		fmt.Printf("%s", r.IdToken)
 	case "access_token":
 		if *authHeader {
 			fmt.Printf("Authorization: Bearer ")
 		}
-		fmt.Printf("%s\n", r.AccessToken)
+		fmt.Printf("%s", r.AccessToken)
 	case "token_expire":
-		fmt.Printf("%s\n", expiry)
+		fmt.Printf("%s", expiry)
 	}
 	return nil
 }
