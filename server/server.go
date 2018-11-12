@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	command    = kingpin.Command("server", "Server")
+	command    = kingpin.Command("server", "Start server agent")
 	listenAddr = command.Flag("listen", "Listen address.").Short('l').Default("localhost:1337").String()
 )
 

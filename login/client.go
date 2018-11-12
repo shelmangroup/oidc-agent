@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	command      = kingpin.Command("login", "Login")
+	command      = kingpin.Command("login", "Start a new login flow")
 	skipBrowser  = command.Flag("skip-browser", "Try not to open up the browser").Bool()
 	clientID     = command.Flag("client-id", "OIDC Client ID").Required().String()
 	clientSecret = command.Flag("client-secret", "OIDC Client Secret").Required().String()

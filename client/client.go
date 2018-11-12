@@ -12,10 +12,10 @@ import (
 )
 
 var (
-	command    = kingpin.Command("get", "Get")
+	command    = kingpin.Command("get", "Get Credential")
 	name       = command.Flag("name", "Name of secret").Short('n').Required().String()
 	address    = command.Flag("server", "Server address.").Short('l').Default("127.0.0.1:1337").String()
-	output     = command.Flag("output", "What to output.").Short('o').Default("all").String()
+	output     = command.Flag("output", "What to output. <all|id_token|access_token|token_expire>").Short('o').Default("all").String()
 	authHeader = command.Flag("auth-header", "add HTTP Authorization header").Bool()
 )
 
