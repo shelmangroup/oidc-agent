@@ -32,8 +32,6 @@ func FullCommand() string {
 }
 
 func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
-	log.WithField("cred", req.Name).Info("Request")
-
 	creds, err := s.store.GetOIDCAuth(req.Name)
 	if err != nil {
 		return nil, err
@@ -55,6 +53,7 @@ func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, 
 		if err != nil {
 			return nil, err
 		}
+		log.WithField("cred", req.Name).WithField("expire", tok.Expiry).Info("Request")
 		res := &pb.GetResponse{
 			IdToken:     idToken.(string),
 			AccessToken: tok.AccessToken,
@@ -82,6 +81,7 @@ func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, 
 	if err != nil {
 		return nil, err
 	}
+	log.WithField("cred", req.Name).WithField("expire", tok.Expiry).Info("Request")
 	res := &pb.GetResponse{
 		IdToken:     idToken.(string),
 		AccessToken: tok.AccessToken,
