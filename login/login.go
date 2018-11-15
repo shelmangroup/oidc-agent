@@ -59,17 +59,21 @@ func (a *LoginAgent) init() {
 
 // PerformLogin performs the auth dance necessary to obtain an
 // authorization_code from the user and exchange it for an Oauth2 access_token.
-func (a *LoginAgent) PerformLogin(providerEndpoint string, callbackPort int) (oauth2.TokenSource, error) {
+func (a *LoginAgent) PerformLogin(providerEndpoint string, callbackPort int, extraScope []string) (oauth2.TokenSource, error) {
 	a.init()
 
 	provider, err := oidc.NewProvider(context.Background(), providerEndpoint)
 	if err != nil {
 		return nil, err
 	}
+	scope := []string{"openid", "profile", "email"}
+	if len(extraScope) > 0 {
+		scope = append(scope, extraScope...)
+	}
 	conf := &oauth2.Config{
 		ClientID:     a.ClientID,
 		ClientSecret: a.ClientSecret,
-		Scopes:       []string{"openid", "profile", "email"},
+		Scopes:       scope,
 		Endpoint:     provider.Endpoint(),
 	}
 

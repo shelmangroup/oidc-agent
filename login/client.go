@@ -13,6 +13,7 @@ var (
 	name             = command.Flag("name", "Name the secret").Short('n').Required().String()
 	providerEndpoint = command.Flag("provider-endpoint", "URL to provider").Short('p').Default("https://accounts.google.com").String()
 	callbackPort     = command.Flag("callback-port", "port to listen on for callbacks").Default("0").Int()
+	extraScope       = command.Flag("extra-scope", "request extra scope").Strings()
 )
 
 func FullCommand() string {
@@ -30,7 +31,7 @@ func RunLogin() error {
 		ClientID:     *clientID,
 		ClientSecret: *clientSecret,
 	}
-	ts, err := login.PerformLogin(*providerEndpoint, *callbackPort)
+	ts, err := login.PerformLogin(*providerEndpoint, *callbackPort, *extraScope)
 	if err != nil {
 		return err
 	}
