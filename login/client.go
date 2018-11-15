@@ -11,7 +11,7 @@ var (
 	clientID         = command.Flag("client-id", "OIDC Client ID").Required().String()
 	clientSecret     = command.Flag("client-secret", "OIDC Client Secret").Required().String()
 	name             = command.Flag("name", "Name the secret").Short('n').Required().String()
-	providerEndpoint = command.Flag("provider-endpoint", "URL to provider").Short('p').Required().String()
+	providerEndpoint = command.Flag("provider-endpoint", "URL to provider").Short('p').Default("https://accounts.google.com").String()
 )
 
 func FullCommand() string {
