@@ -59,7 +59,7 @@ func (a *LoginAgent) init() {
 
 // PerformLogin performs the auth dance necessary to obtain an
 // authorization_code from the user and exchange it for an Oauth2 access_token.
-func (a *LoginAgent) PerformLogin(providerEndpoint string) (oauth2.TokenSource, error) {
+func (a *LoginAgent) PerformLogin(providerEndpoint string, callbackPort int) (oauth2.TokenSource, error) {
 	a.init()
 
 	provider, err := oidc.NewProvider(context.Background(), providerEndpoint)
@@ -75,7 +75,7 @@ func (a *LoginAgent) PerformLogin(providerEndpoint string) (oauth2.TokenSource, 
 
 	if !a.SkipBrowser {
 		// Attempt to receive the authorization code via redirect URL
-		if ln, port, err := getListener(); err == nil {
+		if ln, port, err := getListener(callbackPort); err == nil {
 			defer ln.Close()
 			// open a web browser and listen on the redirect URL port
 			conf.RedirectURL = fmt.Sprintf("http://localhost:%d", port)
@@ -123,8 +123,8 @@ func (a *LoginAgent) codeViaPrompt(conf *oauth2.Config) (string, error) {
 	return code, nil
 }
 
-func getListener() (net.Listener, int, error) {
-	laddr := net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0} // port: 0 == find free port
+func getListener(port int) (net.Listener, int, error) {
+	laddr := net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: port} // port: 0 == find free port
 	ln, err := net.ListenTCP("tcp4", &laddr)
 	if err != nil {
 		return nil, 0, err

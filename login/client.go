@@ -12,6 +12,7 @@ var (
 	clientSecret     = command.Flag("client-secret", "OIDC Client Secret").Required().String()
 	name             = command.Flag("name", "Name the secret").Short('n').Required().String()
 	providerEndpoint = command.Flag("provider-endpoint", "URL to provider").Short('p').Default("https://accounts.google.com").String()
+	callbackPort     = command.Flag("callback-port", "port to listen on for callbacks").Default("0").Int()
 )
 
 func FullCommand() string {
@@ -29,7 +30,7 @@ func RunLogin() error {
 		ClientID:     *clientID,
 		ClientSecret: *clientSecret,
 	}
-	ts, err := login.PerformLogin(*providerEndpoint)
+	ts, err := login.PerformLogin(*providerEndpoint, *callbackPort)
 	if err != nil {
 		return err
 	}
