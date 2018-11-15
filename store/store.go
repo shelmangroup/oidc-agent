@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
+	oidc "github.com/coreos/go-oidc"
 	"github.com/shelmangroup/oidc-agent/util"
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 )
 
 const (
@@ -28,6 +28,7 @@ type config struct {
 	ClientID     string   `json:"client_id"`
 	ClientSecret string   `json:"client_secret"`
 	Scopes       []string `json:"scopes"`
+	Endpoint     string   `json:"endpoint"`
 }
 
 type oidcCredentials struct {
@@ -47,7 +48,7 @@ func (a *OIDCAuth) TokenSource(ctx context.Context) oauth2.TokenSource {
 
 type OIDCCredStore interface {
 	GetOIDCAuth(name string) (*OIDCAuth, error)
-	SetOIDCAuth(name, clientID, clientSecret string, tok *oauth2.Token) error
+	SetOIDCAuth(name, providerEndpoint, clientID, clientSecret string, tok *oauth2.Token) error
 	DeleteOIDCAuth(name string) error
 }
 
@@ -81,12 +82,17 @@ func (s *credStore) GetOIDCAuth(name string) (*OIDCAuth, error) {
 		expiry = *creds.OIDCCreds.TokenExpiry
 	}
 
+	provider, err := oidc.NewProvider(context.Background(), creds.OIDCConfig.Endpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	return &OIDCAuth{
 		conf: &oauth2.Config{
 			ClientID:     creds.OIDCConfig.ClientID,
 			ClientSecret: creds.OIDCConfig.ClientSecret,
 			Scopes:       creds.OIDCConfig.Scopes,
-			Endpoint:     google.Endpoint,
+			Endpoint:     provider.Endpoint(),
 			RedirectURL:  "oob",
 		},
 		initialToken: &oauth2.Token{
@@ -99,7 +105,7 @@ func (s *credStore) GetOIDCAuth(name string) (*OIDCAuth, error) {
 }
 
 // SetOIDCAuth sets the stored OIDC credentials.
-func (s *credStore) SetOIDCAuth(name, clientID, clientSecret string, tok *oauth2.Token) error {
+func (s *credStore) SetOIDCAuth(name, providerEndpoint, clientID, clientSecret string, tok *oauth2.Token) error {
 	creds, err := s.loadOIDCCredentials(name)
 	if err != nil {
 		// It's OK if we couldn't read any credentials,
@@ -117,7 +123,8 @@ func (s *credStore) SetOIDCAuth(name, clientID, clientSecret string, tok *oauth2
 	creds.OIDCConfig = &config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
-		Scopes:       []string{"https://www.googleapis.com/auth/cloud-platform"},
+		Endpoint:     providerEndpoint,
+		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "groups"},
 	}
 
 	return s.setOIDCCredentials(name, creds)

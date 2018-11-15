@@ -6,11 +6,12 @@ import (
 )
 
 var (
-	command      = kingpin.Command("login", "Start a new login flow")
-	skipBrowser  = command.Flag("skip-browser", "Try not to open up the browser").Bool()
-	clientID     = command.Flag("client-id", "OIDC Client ID").Required().String()
-	clientSecret = command.Flag("client-secret", "OIDC Client Secret").Required().String()
-	name         = command.Flag("name", "Name the secret").Short('n').Required().String()
+	command          = kingpin.Command("login", "Start a new login flow")
+	skipBrowser      = command.Flag("skip-browser", "Try not to open up the browser").Bool()
+	clientID         = command.Flag("client-id", "OIDC Client ID").Required().String()
+	clientSecret     = command.Flag("client-secret", "OIDC Client Secret").Required().String()
+	name             = command.Flag("name", "Name the secret").Short('n').Required().String()
+	providerEndpoint = command.Flag("provider-endpoint", "URL to provider").Short('p').Required().String()
 )
 
 func FullCommand() string {
@@ -28,7 +29,7 @@ func RunLogin() error {
 		ClientID:     *clientID,
 		ClientSecret: *clientSecret,
 	}
-	ts, err := login.PerformLogin()
+	ts, err := login.PerformLogin(*providerEndpoint)
 	if err != nil {
 		return err
 	}
@@ -37,6 +38,6 @@ func RunLogin() error {
 		return err
 	}
 
-	s.SetOIDCAuth(*name, *clientID, *clientSecret, token)
+	s.SetOIDCAuth(*name, *providerEndpoint, *clientID, *clientSecret, token)
 	return nil
 }

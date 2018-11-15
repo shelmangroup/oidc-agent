@@ -1,6 +1,7 @@
 package login
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"strings"
 
+	oidc "github.com/coreos/go-oidc"
 	"github.com/toqueteos/webbrowser"
 	"golang.org/x/oauth2"
 )
@@ -57,16 +59,18 @@ func (a *LoginAgent) init() {
 
 // PerformLogin performs the auth dance necessary to obtain an
 // authorization_code from the user and exchange it for an Oauth2 access_token.
-func (a *LoginAgent) PerformLogin() (oauth2.TokenSource, error) {
+func (a *LoginAgent) PerformLogin(providerEndpoint string) (oauth2.TokenSource, error) {
 	a.init()
+
+	provider, err := oidc.NewProvider(context.Background(), providerEndpoint)
+	if err != nil {
+		return nil, err
+	}
 	conf := &oauth2.Config{
 		ClientID:     a.ClientID,
 		ClientSecret: a.ClientSecret,
 		Scopes:       []string{"openid", "profile", "email"},
-		Endpoint: oauth2.Endpoint{
-			AuthURL:  "https://accounts.google.com/o/oauth2/v2/auth",
-			TokenURL: "https://www.googleapis.com/oauth2/v4/token",
-		},
+		Endpoint:     provider.Endpoint(),
 	}
 
 	if !a.SkipBrowser {
