@@ -24,11 +24,17 @@ type tokens struct {
 	IdToken      string     `json:"id_token"`
 	TokenExpiry  *time.Time `json:"token_expiry"`
 }
+
+type endpoint struct {
+	TokenURL string `json:"token_url"`
+	AuthURL  string `json:"auth_url"`
+}
+
 type config struct {
-	ClientID     string   `json:"client_id"`
-	ClientSecret string   `json:"client_secret"`
-	Scopes       []string `json:"scopes"`
-	Endpoint     string   `json:"endpoint"`
+	ClientID     string    `json:"client_id"`
+	ClientSecret string    `json:"client_secret"`
+	Scopes       []string  `json:"scopes"`
+	Endpoint     *endpoint `json:"endpoint"`
 }
 
 type oidcCredentials struct {
@@ -48,7 +54,7 @@ func (a *OIDCAuth) TokenSource(ctx context.Context) oauth2.TokenSource {
 
 type OIDCCredStore interface {
 	GetOIDCAuth(name string) (*OIDCAuth, error)
-	SetOIDCAuth(name, providerEndpoint, clientID, clientSecret string, tok *oauth2.Token) error
+	SetOIDCAuth(name, clientID, clientSecret string, providerEndpoint oauth2.Endpoint, tok *oauth2.Token) error
 	DeleteOIDCAuth(name string) error
 }
 
@@ -82,18 +88,16 @@ func (s *credStore) GetOIDCAuth(name string) (*OIDCAuth, error) {
 		expiry = *creds.OIDCCreds.TokenExpiry
 	}
 
-	provider, err := oidc.NewProvider(context.Background(), creds.OIDCConfig.Endpoint)
-	if err != nil {
-		return nil, err
-	}
-
 	return &OIDCAuth{
 		conf: &oauth2.Config{
 			ClientID:     creds.OIDCConfig.ClientID,
 			ClientSecret: creds.OIDCConfig.ClientSecret,
 			Scopes:       creds.OIDCConfig.Scopes,
-			Endpoint:     provider.Endpoint(),
-			RedirectURL:  "oob",
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  creds.OIDCConfig.Endpoint.AuthURL,
+				TokenURL: creds.OIDCConfig.Endpoint.TokenURL,
+			},
+			RedirectURL: "oob",
 		},
 		initialToken: &oauth2.Token{
 			AccessToken:  creds.OIDCCreds.AccessToken,
@@ -105,7 +109,7 @@ func (s *credStore) GetOIDCAuth(name string) (*OIDCAuth, error) {
 }
 
 // SetOIDCAuth sets the stored OIDC credentials.
-func (s *credStore) SetOIDCAuth(name, providerEndpoint, clientID, clientSecret string, tok *oauth2.Token) error {
+func (s *credStore) SetOIDCAuth(name, clientID, clientSecret string, providerEndpoint oauth2.Endpoint, tok *oauth2.Token) error {
 	creds, err := s.loadOIDCCredentials(name)
 	if err != nil {
 		// It's OK if we couldn't read any credentials,
@@ -123,8 +127,11 @@ func (s *credStore) SetOIDCAuth(name, providerEndpoint, clientID, clientSecret s
 	creds.OIDCConfig = &config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
-		Endpoint:     providerEndpoint,
-		Scopes:       []string{oidc.ScopeOpenID, "profile", "email", "groups"},
+		Endpoint: &endpoint{
+			AuthURL:  providerEndpoint.AuthURL,
+			TokenURL: providerEndpoint.TokenURL,
+		},
+		Scopes: []string{oidc.ScopeOpenID, "profile", "email", "groups"},
 	}
 
 	return s.setOIDCCredentials(name, creds)

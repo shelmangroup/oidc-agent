@@ -1,6 +1,9 @@
 package login
 
 import (
+	"context"
+
+	oidc "github.com/coreos/go-oidc"
 	"github.com/shelmangroup/oidc-agent/store"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -31,7 +34,13 @@ func RunLogin() error {
 		ClientID:     *clientID,
 		ClientSecret: *clientSecret,
 	}
-	ts, err := login.PerformLogin(*providerEndpoint, *callbackPort, *extraScope)
+
+	provider, err := oidc.NewProvider(context.Background(), *providerEndpoint)
+	if err != nil {
+		return err
+	}
+
+	ts, err := login.PerformLogin(provider.Endpoint(), *callbackPort, *extraScope)
 	if err != nil {
 		return err
 	}
@@ -40,6 +49,6 @@ func RunLogin() error {
 		return err
 	}
 
-	s.SetOIDCAuth(*name, *providerEndpoint, *clientID, *clientSecret, token)
+	s.SetOIDCAuth(*name, *clientID, *clientSecret, provider.Endpoint(), token)
 	return nil
 }
