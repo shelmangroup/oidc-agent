@@ -37,9 +37,12 @@ type LoginAgent struct {
 	// Open the browser for the given url.  If nil, uses webbrowser.Open.
 	OpenBrowser func(url string) error
 
-	// Google Client id/secret
+	// OIDC Client id/secret
 	ClientID     string
 	ClientSecret string
+
+	Endpoint   oauth2.Endpoint
+	ExtraScope []string
 }
 
 // populate missing fields as described in the struct definition comments
@@ -57,19 +60,19 @@ func (a *LoginAgent) init() {
 
 // PerformLogin performs the auth dance necessary to obtain an
 // authorization_code from the user and exchange it for an Oauth2 access_token.
-func (a *LoginAgent) PerformLogin(providerEndpoint oauth2.Endpoint, callbackPort int, extraScope []string) (oauth2.TokenSource, error) {
+func (a *LoginAgent) PerformLogin(callbackPort int) (oauth2.TokenSource, error) {
 	a.init()
 
 	scope := []string{"openid", "profile", "email"}
-	if len(extraScope) > 0 {
-		scope = append(scope, extraScope...)
+	if len(a.ExtraScope) > 0 {
+		scope = append(scope, a.ExtraScope...)
 	}
 
 	conf := &oauth2.Config{
 		ClientID:     a.ClientID,
 		ClientSecret: a.ClientSecret,
+		Endpoint:     a.Endpoint,
 		Scopes:       scope,
-		Endpoint:     providerEndpoint,
 	}
 
 	if !a.SkipBrowser {

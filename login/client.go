@@ -19,12 +19,19 @@ var (
 	extraScope       = command.Flag("extra-scope", "request extra scope").Strings()
 )
 
+// FullCommand will command line string
 func FullCommand() string {
 	return command.FullCommand()
 }
 
+// RunLogin will start a ODIC dance with the provider
 func RunLogin() error {
 	s, err := store.NewOIDCCredStore()
+	if err != nil {
+		return err
+	}
+
+	provider, err := oidc.NewProvider(context.Background(), *providerEndpoint)
 	if err != nil {
 		return err
 	}
@@ -33,14 +40,10 @@ func RunLogin() error {
 		SkipBrowser:  *skipBrowser,
 		ClientID:     *clientID,
 		ClientSecret: *clientSecret,
+		Endpoint:     provider.Endpoint(),
+		ExtraScope:   *extraScope,
 	}
-
-	provider, err := oidc.NewProvider(context.Background(), *providerEndpoint)
-	if err != nil {
-		return err
-	}
-
-	ts, err := login.PerformLogin(provider.Endpoint(), *callbackPort, *extraScope)
+	ts, err := login.PerformLogin(*callbackPort)
 	if err != nil {
 		return err
 	}
