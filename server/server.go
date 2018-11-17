@@ -22,15 +22,18 @@ var (
 	listenAddr = command.Flag("listen", "Listen address.").Short('l').Default("localhost:1337").String()
 )
 
+// Server gRPC server struct
 type Server struct {
 	tokenCache map[string]oauth2.TokenSource
 	store      store.OIDCCredStore
 }
 
+// FullCommand return command line string
 func FullCommand() string {
 	return command.FullCommand()
 }
 
+//Get will get credential from store and cache if found
 func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
 	creds, err := s.store.GetOIDCAuth(req.Name)
 	if err != nil {
@@ -90,6 +93,7 @@ func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, 
 	return res, nil
 }
 
+// RunServer starts a GRPC server
 func RunServer() {
 	errCh := make(chan error)
 
