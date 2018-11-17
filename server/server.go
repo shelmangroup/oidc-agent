@@ -33,39 +33,7 @@ func FullCommand() string {
 	return command.FullCommand()
 }
 
-//Get will get credential from store and cache if found
-func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
-	creds, err := s.store.GetOIDCAuth(req.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	if ts, ok := s.tokenCache[req.Name]; ok {
-		tok, err := ts.Token()
-		if err != nil {
-			return nil, err
-		}
-		if !tok.Valid() {
-			return nil, err
-		}
-		idToken := tok.Extra("id_token")
-		if idToken == nil {
-			idToken = creds.InitialIdToken
-		}
-		expiry, err := ptypes.TimestampProto(tok.Expiry)
-		if err != nil {
-			return nil, err
-		}
-		log.WithField("cred", req.Name).WithField("expire", tok.Expiry).Info("Request")
-		res := &pb.GetResponse{
-			IdToken:     idToken.(string),
-			AccessToken: tok.AccessToken,
-			TokenExpiry: expiry,
-		}
-		return res, nil
-	}
-
-	ts := creds.TokenSource(context.Background())
+func (s *Server) retriveToken(name string, ts oauth2.TokenSource, cred *store.OIDCAuth) (*pb.GetResponse, error) {
 	tok, err := ts.Token()
 	if err != nil {
 		return nil, err
@@ -75,21 +43,38 @@ func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, 
 	}
 	idToken := tok.Extra("id_token")
 	if idToken == nil {
-		idToken = creds.InitialIdToken
+		idToken = cred.InitialIdToken
 	}
-	// cache token
-	s.tokenCache[req.Name] = ts
-
 	expiry, err := ptypes.TimestampProto(tok.Expiry)
 	if err != nil {
 		return nil, err
 	}
-	log.WithField("cred", req.Name).WithField("expire", tok.Expiry).Info("Request")
-	res := &pb.GetResponse{
+	log.WithField("cred", name).WithField("expire", tok.Expiry).Info("Request")
+	return &pb.GetResponse{
 		IdToken:     idToken.(string),
 		AccessToken: tok.AccessToken,
 		TokenExpiry: expiry,
+	}, nil
+}
+
+//Get will get credential from store and cache if found
+func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
+	cred, err := s.store.GetOIDCAuth(req.Name)
+	if err != nil {
+		return nil, err
 	}
+
+	if ts, ok := s.tokenCache[req.Name]; ok {
+		return s.retriveToken(req.Name, ts, cred)
+	}
+
+	ts := cred.TokenSource(context.Background())
+	res, err := s.retriveToken(req.Name, ts, cred)
+	if err != nil {
+		return nil, err
+	}
+	//cache token
+	s.tokenCache[req.Name] = ts
 	return res, nil
 }
 
