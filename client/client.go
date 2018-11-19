@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -18,6 +19,12 @@ var (
 	output     = command.Flag("output", "What to output. <all|id_token|access_token|token_expire>").Short('o').Default("all").String()
 	authHeader = command.Flag("auth-header", "add HTTP Authorization header").Bool()
 )
+
+type token struct {
+	AccessToken string    `json:"access_token"`
+	IdToken     string    `json:"id_token"`
+	TokenExpiry time.Time `json:"token_expiry"`
+}
 
 func FullCommand() string {
 	return command.FullCommand()
@@ -44,11 +51,16 @@ func RunGet() error {
 
 	switch *output {
 	case "all":
-		{
-			fmt.Printf("IdToken: %s\n", r.IdToken)
-			fmt.Printf("AccessToken: %s\n", r.AccessToken)
-			fmt.Printf("Expire: %s\n", expiry)
+		creds := &token{
+			AccessToken: r.AccessToken,
+			IdToken:     r.IdToken,
+			TokenExpiry: expiry,
 		}
+		output, err := json.MarshalIndent(creds, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s", output)
 	case "id_token":
 		if *authHeader {
 			fmt.Printf("Authorization: Bearer ")
