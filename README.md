@@ -11,7 +11,7 @@ The agent can also be used as a credential helper for services like `kubernetes`
 
 ### Create a Oauth2 client ID.
 
-Create a new client ID/Secret at your prefereed provider (defaults to google cloud)
+Create a new client ID/Secret at your preferred provider (defaults to google cloud)
 with the callback url set to `http://localhost`.
 
 ### Start a new login dance.
@@ -31,9 +31,9 @@ Starta a new OIDC login flow with another provider.
 Example:
 ```bash
 $ oidc-agent login \
+  -p https://dex.example.com \
   --client-id login-app \
   --client-secret NotSoSecret \
-  -p https://dex.example.com \
   --callback-port 31337 \
   --extra-scope offline_access \
   -n my-app
