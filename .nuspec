@@ -3,7 +3,7 @@
   <metadata>
     <id>oidc-agent</id>
     <version>0.2</version>
-    <title>ODIC Agent</title>
+    <title>OIDC Agent</title>
     <authors>Lars Sjostrom</authors>
     <owners>Shelman Group</owners>
     <licenseUrl>https://raw.githubusercontent.com/shelmangroup/oidc-agent/master/LICENSE</licenseUrl>
