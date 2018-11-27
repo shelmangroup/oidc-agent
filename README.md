@@ -57,7 +57,7 @@ $ oidc-agent get -n my-app
 
 Add authorization header
 ```bash
-$ curl -H $(oidc-agent get -n my-app --auth-header -o id_token) https://my-app.example.com
+$ curl -H "(oidc-agent get -n my-app --auth-header -o id_token)" https://my-app.example.com
 ```
 
 ### kubectl credential helper
