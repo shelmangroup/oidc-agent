@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
 	pb "github.com/shelmangroup/oidc-agent/proto"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -32,9 +35,14 @@ func FullCommand() string {
 
 func RunGet() error {
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(*address, grpc.WithInsecure())
+	sock := filepath.Join(os.Getenv("HOME"), ".oidc-agent.sock")
+	conn, err := grpc.Dial("unix://"+sock, grpc.WithInsecure())
 	if err != nil {
-		return err
+		log.Warnf("falling back to tcp: %s", *address)
+		conn, err = grpc.Dial(*address, grpc.WithInsecure())
+		if err != nil {
+			return err
+		}
 	}
 	defer conn.Close()
 	c := pb.NewOIDCAgentClient(conn)

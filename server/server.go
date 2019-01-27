@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/golang/protobuf/ptypes"
@@ -82,9 +83,16 @@ func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, 
 func RunServer() {
 	errCh := make(chan error)
 
-	lis, err := net.Listen("tcp", *listenAddr)
+	sock := filepath.Join(os.Getenv("HOME"), ".oidc-agent.sock")
+	// remove if already existing
+	os.Remove(sock)
+	lis, err := net.Listen("unix", sock)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Warnf("falling back to tcp: %s", *listenAddr)
+		lis, err = net.Listen("tcp", *listenAddr)
+		if err != nil {
+			log.Fatalf("failed to listen: %v", err)
+		}
 	}
 	s, err := store.NewOIDCCredStore()
 	if err != nil {
@@ -97,7 +105,7 @@ func RunServer() {
 			store:      s,
 		})
 		reflection.Register(svc)
-		log.WithField("address", *listenAddr).Info("Starting server")
+		log.WithField("address", lis.Addr().String()).Info("Starting server")
 		if err := svc.Serve(lis); err != nil {
 			errCh <- err
 		}
