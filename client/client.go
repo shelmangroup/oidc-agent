@@ -56,7 +56,6 @@ func RunGet() error {
 	if err != nil {
 		return err
 	}
-
 	switch *output {
 	case "all":
 		creds := &token{
