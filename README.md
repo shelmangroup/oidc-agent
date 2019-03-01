@@ -31,7 +31,7 @@ Starta a new OIDC login flow with another provider.
 Example:
 ```bash
 $ oidc-agent login \
-  -p https://dex.example.com \
+  -p https://mycompany.eu.auth0.com \
   --client-id login-app \
   --client-secret NotSoSecret \
   --callback-port 31337 \
@@ -57,7 +57,7 @@ $ oidc-agent get -n my-app
 
 Add authorization header
 ```bash
-$ curl -H "(oidc-agent get -n my-app --auth-header -o id_token)" https://my-app.example.com
+$ curl -H "$(oidc-agent get -n my-app --auth-header -o id_token)" https://my-app.example.com
 ```
 
 ### kubectl credential helper
