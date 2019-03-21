@@ -9,6 +9,13 @@ The agent can also be used as a credential helper for services like `kubernetes`
 
 ## Usage
 
+### Installation
+#### Scoop
+```
+scoop bucket add shelmangroup https://github.com/shelmangroup/scoops.git
+scoop install oidc-agent
+```
+
 ### Create a Oauth2 client ID.
 
 Create a new client ID/Secret at your preferred provider (defaults to google cloud)
