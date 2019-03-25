@@ -4,12 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	oidc "github.com/coreos/go-oidc"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/shelmangroup/oidc-agent/util"
 	"golang.org/x/oauth2"
 )
@@ -42,34 +45,55 @@ type oidcCredentials struct {
 	OIDCConfig *config `json:"oidcConfig,omitempty"`
 }
 
-type OIDCAuth struct {
-	conf           *oauth2.Config
-	initialToken   *oauth2.Token
-	InitialIdToken string
-}
-
-func (a *OIDCAuth) TokenSource(ctx context.Context) oauth2.TokenSource {
-	return a.conf.TokenSource(ctx, a.initialToken)
+type OIDCTokens struct {
+	AccessToken string    `json:"access_token,omitempty"`
+	IDToken     string    `json:"id_token,omitempty"`
+	TokenExpiry time.Time `json:"token_expiry,omitempty"`
 }
 
 type OIDCCredStore interface {
-	GetOIDCAuth(name string) (*OIDCAuth, error)
+	GetOIDCTokens(name string) (*OIDCTokens, error)
 	SetOIDCAuth(name, clientID, clientSecret string, providerEndpoint oauth2.Endpoint, tok *oauth2.Token) error
 	DeleteOIDCAuth(name string) error
 }
 
 type credStore struct {
-	credentialPath string
+	rootPath string
 }
 
 func NewOIDCCredStore() (OIDCCredStore, error) {
-	path, err := oidcCredentialPath()
+	path, err := oidcCredentialRootPath()
 	return &credStore{
-		credentialPath: path,
+		rootPath: path,
 	}, err
 }
 
-func (s *credStore) GetOIDCAuth(name string) (*OIDCAuth, error) {
+func (s *credStore) GetOIDCTokens(name string) (*OIDCTokens, error) {
+
+	tokens, err := s.loadOIDCTokens(name)
+
+	if err != nil {
+		log.Printf("Unable to read tokens file for %s: %v\n", name, err)
+	}
+
+	if tokens != nil {
+		if time.Now().Before(tokens.TokenExpiry) {
+			return tokens, nil
+		}
+	}
+
+	// tokens not loaded or expired
+	tokens, err = s.refreshTokens(name)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return tokens, nil
+
+}
+
+func (s *credStore) refreshTokens(name string) (*OIDCTokens, error) {
 	creds, err := s.loadOIDCCredentials(name)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -88,24 +112,43 @@ func (s *credStore) GetOIDCAuth(name string) (*OIDCAuth, error) {
 		expiry = *creds.OIDCCreds.TokenExpiry
 	}
 
-	return &OIDCAuth{
-		conf: &oauth2.Config{
-			ClientID:     creds.OIDCConfig.ClientID,
-			ClientSecret: creds.OIDCConfig.ClientSecret,
-			Scopes:       creds.OIDCConfig.Scopes,
-			Endpoint: oauth2.Endpoint{
-				AuthURL:  creds.OIDCConfig.Endpoint.AuthURL,
-				TokenURL: creds.OIDCConfig.Endpoint.TokenURL,
-			},
-			RedirectURL: "oob",
+	conf := &oauth2.Config{
+		ClientID:     creds.OIDCConfig.ClientID,
+		ClientSecret: creds.OIDCConfig.ClientSecret,
+		Scopes:       creds.OIDCConfig.Scopes,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  creds.OIDCConfig.Endpoint.AuthURL,
+			TokenURL: creds.OIDCConfig.Endpoint.TokenURL,
 		},
-		initialToken: &oauth2.Token{
-			AccessToken:  creds.OIDCCreds.AccessToken,
-			RefreshToken: creds.OIDCCreds.RefreshToken,
-			Expiry:       expiry,
-		},
-		InitialIdToken: creds.OIDCCreds.IdToken,
-	}, nil
+		RedirectURL: "oob",
+	}
+
+	initialToken := &oauth2.Token{
+		AccessToken:  creds.OIDCCreds.AccessToken,
+		RefreshToken: creds.OIDCCreds.RefreshToken,
+		Expiry:       expiry,
+	}
+
+	ts := conf.TokenSource(context.Background(), initialToken)
+
+	tok, err := ts.Token()
+	if err != nil {
+		return nil, err
+	}
+
+	tokens := &OIDCTokens{
+		AccessToken: tok.AccessToken,
+		IDToken:     tok.Extra("id_token").(string),
+		TokenExpiry: tok.Expiry,
+	}
+
+	err = s.setOIDCTokens(name, tokens)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return tokens, nil
 }
 
 // SetOIDCAuth sets the stored OIDC credentials.
@@ -117,10 +160,12 @@ func (s *credStore) SetOIDCAuth(name, clientID, clientSecret string, providerEnd
 		creds = &oidcCredentials{}
 	}
 
+	initialIDToken := tok.Extra("id_token").(string)
+
 	creds.OIDCCreds = &tokens{
 		AccessToken:  tok.AccessToken,
 		RefreshToken: tok.RefreshToken,
-		IdToken:      tok.Extra("id_token").(string),
+		IdToken:      initialIDToken,
 		TokenExpiry:  &tok.Expiry,
 	}
 
@@ -134,29 +179,41 @@ func (s *credStore) SetOIDCAuth(name, clientID, clientSecret string, providerEnd
 		Scopes: []string{oidc.ScopeOpenID, "profile", "email", "groups"},
 	}
 
-	return s.setOIDCCredentials(name, creds)
+	err = s.setOIDCCredentials(name, creds)
+	if err != nil {
+		return err
+	}
+	err = s.setOIDCTokens(name, &OIDCTokens{
+		AccessToken: tok.AccessToken,
+		IDToken:     initialIDToken,
+		TokenExpiry: tok.Expiry,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // DeleteOIDCAuth deletes the stored OIDC credentials.
 func (s *credStore) DeleteOIDCAuth(name string) error {
-	creds, err := s.loadOIDCCredentials(name)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// No file, no credentials.
-			return nil
-		}
-		return err
+
+	filesToDelete := []string{
+		s.getTokenPath(name),
+		s.getCredentialsPath(name),
 	}
 
-	// Optimization: only perform a 'set' if necessary
-	if creds.OIDCCreds != nil {
-		creds.OIDCCreds = nil
-		return s.setOIDCCredentials(name, creds)
+	for _, path := range filesToDelete {
+		if _, err := os.Stat(path); err == nil {
+			return os.Remove(path)
+		}
+		return nil
 	}
+
 	return nil
 }
 
-func oidcCredentialPath() (string, error) {
+func oidcCredentialRootPath() (string, error) {
 	if path := os.Getenv(credentialStoreEnvVar); strings.TrimSpace(path) != "" {
 		return path, nil
 	}
@@ -168,13 +225,17 @@ func oidcCredentialPath() (string, error) {
 	return configPath, nil
 }
 
+func (s *credStore) getCredentialsPath(name string) string {
+	return filepath.Join(s.rootPath, name)
+}
+
 func (s *credStore) createCredentialFile(name string) (*os.File, error) {
 	// create the config dir, if it doesnt exist
-	if err := os.MkdirAll(s.credentialPath, 0700); err != nil {
+	if err := os.MkdirAll(s.rootPath, 0700); err != nil {
 		return nil, err
 	}
 	// create the credential file, or truncate (clear) it if it exists
-	path := filepath.Join(s.credentialPath, name)
+	path := s.getCredentialsPath(name)
 	f, err := os.Create(path)
 	if err != nil {
 		return nil, err
@@ -183,7 +244,7 @@ func (s *credStore) createCredentialFile(name string) (*os.File, error) {
 }
 
 func (s *credStore) loadOIDCCredentials(name string) (*oidcCredentials, error) {
-	path := filepath.Join(s.credentialPath, name)
+	path := s.getCredentialsPath(name)
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -206,4 +267,48 @@ func (s *credStore) setOIDCCredentials(name string, creds *oidcCredentials) erro
 	defer f.Close()
 
 	return json.NewEncoder(f).Encode(creds)
+}
+
+func (s *credStore) getTokenPath(name string) string {
+	return filepath.Join(s.rootPath, fmt.Sprintf("%s_tokens", name))
+}
+
+func (s *credStore) createTokensFile(name string) (*os.File, error) {
+	// create the config dir, if it doesnt exist
+	if err := os.MkdirAll(s.rootPath, 0700); err != nil {
+		return nil, err
+	}
+	// create the credential file, or truncate (clear) it if it exists
+	path := s.getTokenPath(name)
+	f, err := os.Create(path)
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
+}
+
+func (s *credStore) loadOIDCTokens(name string) (*OIDCTokens, error) {
+	path := s.getTokenPath(name)
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	tokens := &OIDCTokens{}
+	if err := json.NewDecoder(f).Decode(tokens); err != nil {
+		return nil, err
+	}
+
+	return tokens, nil
+}
+
+func (s *credStore) setOIDCTokens(name string, tokens *OIDCTokens) error {
+	f, err := s.createTokensFile(name)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return json.NewEncoder(f).Encode(tokens)
 }
