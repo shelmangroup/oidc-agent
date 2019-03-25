@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -73,13 +72,11 @@ func (s *credStore) GetOIDCTokens(name string) (*OIDCTokens, error) {
 	tokens, err := s.loadOIDCTokens(name)
 
 	if err != nil {
-		log.Printf("Unable to read tokens file for %s: %v\n", name, err)
+		return nil, err
 	}
 
-	if tokens != nil {
-		if time.Now().Before(tokens.TokenExpiry) {
-			return tokens, nil
-		}
+	if time.Now().Before(tokens.TokenExpiry) {
+		return tokens, nil
 	}
 
 	// tokens not loaded or expired
