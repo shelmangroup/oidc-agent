@@ -11,7 +11,6 @@ import (
 	"time"
 
 	oidc "github.com/coreos/go-oidc"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/shelmangroup/oidc-agent/util"
 	"golang.org/x/oauth2"
 )

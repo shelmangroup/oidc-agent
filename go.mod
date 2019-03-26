@@ -5,7 +5,6 @@ require (
 	github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf // indirect
 	github.com/coreos/go-oidc v2.0.0+incompatible
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/mattn/go-sqlite3 v1.10.0
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35 // indirect
 	github.com/stretchr/testify v1.2.2 // indirect
