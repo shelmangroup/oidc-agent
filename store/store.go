@@ -19,6 +19,10 @@ const (
 	credentialStoreEnvVar = "OIDC_CREDENTIAL_STORE"
 )
 
+var (
+	ErrMissingIDToken = errors.New("Token response is missing ID token. You must wait until the previous ID token expires (likely 90 minutes)")
+)
+
 type tokens struct {
 	AccessToken  string     `json:"access_token"`
 	RefreshToken string     `json:"refresh_token"`
@@ -70,6 +74,13 @@ func (s *credStore) GetOIDCTokens(name string) (*OIDCTokens, error) {
 
 	tokens, err := s.loadOIDCTokens(name)
 
+	// special case for migrating from the previous versions
+	// of oidc-agent
+	if err != nil && os.IsNotExist(err) {
+		tokens, err = s.refreshTokens(name)
+	}
+
+	// note that this also handles the error for the migration case above
 	if err != nil {
 		return nil, err
 	}
@@ -92,10 +103,6 @@ func (s *credStore) GetOIDCTokens(name string) (*OIDCTokens, error) {
 func (s *credStore) refreshTokens(name string) (*OIDCTokens, error) {
 	creds, err := s.loadOIDCCredentials(name)
 	if err != nil {
-		if os.IsNotExist(err) {
-			// No file, no credentials.
-			return nil, err
-		}
 		return nil, err
 	}
 
@@ -132,9 +139,14 @@ func (s *credStore) refreshTokens(name string) (*OIDCTokens, error) {
 		return nil, err
 	}
 
+	initalIDTokenRaw := tok.Extra("id_token")
+	if initalIDTokenRaw == nil {
+		return nil, ErrMissingIDToken
+	}
+
 	tokens := &OIDCTokens{
 		AccessToken: tok.AccessToken,
-		IDToken:     tok.Extra("id_token").(string),
+		IDToken:     initalIDTokenRaw.(string),
 		TokenExpiry: tok.Expiry,
 	}
 
