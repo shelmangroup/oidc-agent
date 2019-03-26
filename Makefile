@@ -6,7 +6,7 @@ GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
 BINARY_NAME_LINUX=oidc-agent_linux_amd64
 BINARY_NAME_DARWIN=oidc-agent_darwin_amd64
-BINARY_NAME_WINDOWS=$(BINARY_NAME)_windows_amd64.exe
+BINARY_NAME_WINDOWS=oidc-agent_windows_amd64.exe
 
 all: test build
 build: 
