@@ -9,3 +9,5 @@ jobs:
       - run: make build-linux
       - run: make build-darwin
       - run: make build-windows
+      - store_artifacts:
+          path: bin/
