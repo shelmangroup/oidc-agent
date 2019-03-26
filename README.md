@@ -49,13 +49,7 @@ $ oidc-agent login \
 
 This will cache the initial credentials in `~/.config/oidc-agent/my-app` or `%UserProfile%\AppData\Roaming\oidc-agent\my-app` on windows.
 
-### Start the OIDC Agent Server.
-
-```bash
-$ oidc-agent server
-```
-
-### Fetch credentials from server.
+### Fetch credentials
 
 will output `access_token`, `id_token`, and `token_expiry` in json format.
 ```bash
