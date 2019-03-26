@@ -1,4 +1,5 @@
 # oidc-agent
+[![CircleCI](https://circleci.com/gh/shelmangroup/oidc-agent.svg?style=svg)](https://circleci.com/gh/shelmangroup/oidc-agent)
 
 A cross platform OIDC agent that will manange your OIDC tokens through a single gRPC API,
 inspired by ssh-agent/gpg-agent. Agent will automaticly refresh token upon expiry. Perfect
