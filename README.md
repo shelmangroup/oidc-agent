@@ -44,6 +44,7 @@ $ oidc-agent login \
   --client-secret NotSoSecret \
   --callback-port 31337 \
   --extra-scope offline_access \
+  --audience https://my-app.example.com/ \
   -n my-app
 
 ```
