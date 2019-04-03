@@ -40,6 +40,7 @@ type LoginAgent struct {
 	// OIDC Client id/secret
 	ClientID     string
 	ClientSecret string
+	Audience     string
 
 	Endpoint   oauth2.Endpoint
 	ExtraScope []string
@@ -81,7 +82,8 @@ func (a *LoginAgent) PerformLogin(callbackPort int) (oauth2.TokenSource, error) 
 			defer ln.Close()
 			// open a web browser and listen on the redirect URL port
 			conf.RedirectURL = fmt.Sprintf("http://localhost:%d", port)
-			url := conf.AuthCodeURL("state", oauth2.AccessTypeOffline, promptConsent)
+			aud := oauth2.SetAuthURLParam("audience", a.Audience)
+			url := conf.AuthCodeURL("state", oauth2.AccessTypeOffline, promptConsent, aud)
 			if err := a.OpenBrowser(url); err == nil {
 				if code, err := handleCodeResponse(ln); err == nil {
 					token, err := conf.Exchange(oauth2.NoContext, code)
@@ -111,7 +113,8 @@ func (a *LoginAgent) PerformLogin(callbackPort int) (oauth2.TokenSource, error) 
 func (a *LoginAgent) codeViaPrompt(conf *oauth2.Config) (string, error) {
 	// Direct the user to our login portal
 	conf.RedirectURL = redirectURIAuthCodeInTitleBar
-	url := conf.AuthCodeURL("state", oauth2.AccessTypeOffline, promptConsent)
+	aud := oauth2.SetAuthURLParam("audience", a.Audience)
+	url := conf.AuthCodeURL("state", oauth2.AccessTypeOffline, promptConsent, aud)
 	fmt.Fprintln(a.Out, "Please visit the following URL and complete the authorization dialog:")
 	fmt.Fprintf(a.Out, "%v\n", url)
 

@@ -17,6 +17,7 @@ var (
 	providerEndpoint = command.Flag("provider-endpoint", "URL to provider").Short('p').Default("https://accounts.google.com").String()
 	callbackPort     = command.Flag("callback-port", "port to listen on for callbacks").Default("0").Int()
 	extraScope       = command.Flag("extra-scope", "request extra scope").Strings()
+	audience         = command.Flag("audience", "request audience").String()
 )
 
 // FullCommand will command line string
@@ -42,6 +43,7 @@ func RunLogin() error {
 		ClientSecret: *clientSecret,
 		Endpoint:     provider.Endpoint(),
 		ExtraScope:   *extraScope,
+		Audience:     *audience,
 	}
 	ts, err := login.PerformLogin(*callbackPort)
 	if err != nil {
